@@ -11,7 +11,7 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="data:application/json;charset=utf-8,{
       %22name%22: %22Zari's Fashion World%22,
-      %22short_name%22: %22Zari's Fashion World%22,
+      %22short_name%22: %22Zari's Store%22,
       %22start_url%22: %22/%22,
       %22display%22: %22standalone%22,
       %22background_color%22: %22%23ffffff%22,
@@ -41,10 +41,10 @@
     </div>
 
     <!-- Category Tabs -->
-    <div class="flex justify-center gap-4 my-4 px-4">
-        <button onclick="filterCategory('Abaya')" id="btnAbaya" class="px-6 py-2 rounded-full font-bold bg-pink-600 text-white shadow">Abayas</button>
-        <button onclick="filterCategory('Perfume')" id="btnPerfume" class="px-6 py-2 rounded-full font-bold bg-gray-200 text-gray-700">Perfumes</button>
-        <button onclick="filterCategory('Caligraphy')" id="btnCaligraphy" class="px-6 py-2 rounded-full font-bold bg-red-600 text-white shadow">Caligraphy</button>
+    <div class="flex justify-center gap-3 my-4 px-4 overflow-x-auto">
+        <button onclick="filterCategory('Abaya')" id="btnAbaya" class="px-5 py-2 rounded-full font-bold bg-pink-600 text-white shadow text-sm">Abayas</button>
+        <button onclick="filterCategory('Perfume')" id="btnPerfume" class="px-5 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm">Perfumes</button>
+        <button onclick="filterCategory('Caligraphy')" id="btnCaligraphy" class="px-5 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm">Caligraphy</button>
     </div>
 
     <!-- Product Grid -->
@@ -70,9 +70,10 @@
                     <option value="Caligraphy">Caligraphy</option>
                 </select>
                 <input type="number" id="pPrice" placeholder="Price (Rs)" class="w-full border p-2 mb-2 rounded">
+                <input type="text" id="pStock" placeholder="Stock Status (e.g. In Stock / Available)" value="In Stock" class="w-full border p-2 mb-2 rounded">
                 <textarea id="pDesc" placeholder="Variations (e.g. Size: Free, Color: Black)" class="w-full border p-2 mb-2 rounded"></textarea>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Upload Images (Multiple):</label>
-                <input type="file" id="pImage" multiple accept="image/*" class="w-full border p-2 mb-4 rounded">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Select Image from Gallery:</label>
+                <input type="file" id="pImage" accept="image/*" class="w-full border p-2 mb-4 rounded">
                 <button onclick="uploadProduct()" class="w-full bg-green-600 text-white py-2 rounded font-bold mb-2">Publish Product</button>
                 <button onclick="logoutAdmin()" class="w-full bg-gray-400 text-white py-2 rounded font-bold">Logout</button>
             </div>
@@ -88,6 +89,7 @@
 
         let currentCategory = 'Abaya';
         let deferredPrompt = null;
+        let isAdminLoggedIn = false;
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -118,28 +120,33 @@
             if (error) {
                 alert('Login Failed: ' + error.message);
             } else {
+                isAdminLoggedIn = true;
                 alert('Login Successful!');
                 document.getElementById('adminLoginForm').classList.add('hidden');
                 document.getElementById('adminUploadForm').classList.remove('hidden');
+                loadProducts();
             }
         }
 
         async function logoutAdmin() {
             await supabaseClient.auth.signOut();
+            isAdminLoggedIn = false;
             document.getElementById('adminLoginForm').classList.remove('hidden');
             document.getElementById('adminUploadForm').classList.add('hidden');
             alert('Logged out');
+            loadProducts();
         }
 
         function filterCategory(cat) {
             currentCategory = cat;
-            if(cat === 'Abaya') {
-                document.getElementById('btnAbaya').className = "px-6 py-2 rounded-full font-bold bg-pink-600 text-white shadow";
-                document.getElementById('btnPerfume').className = "px-6 py-2 rounded-full font-bold bg-gray-200 text-gray-700";
-            } else {
-                document.getElementById('btnPerfume').className = "px-6 py-2 rounded-full font-bold bg-pink-600 text-white shadow";
-                document.getElementById('btnAbaya').className = "px-6 py-2 rounded-full font-bold bg-gray-200 text-gray-700";
-            }
+            ['Abaya', 'Perfume', 'Caligraphy'].forEach(c => {
+                const btn = document.getElementById('btn' + c);
+                if(c === cat) {
+                    btn.className = "px-5 py-2 rounded-full font-bold bg-pink-600 text-white shadow text-sm";
+                } else {
+                    btn.className = "px-5 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm";
+                }
+            });
             loadProducts();
         }
 
@@ -165,22 +172,30 @@
 
             grid.innerHTML = '';
             data.forEach(p => {
-                // Fixed robust public image URL handling
-                const imgUrl = (p.images && p.images.length > 0 && p.images[0]) ? p.images[0] : 'https://bfstugwiughvzsecngcg.supabase.co/storage/v1/object/public/product-images/logo.png';
+                // Strict check: if image array is valid, show user uploaded image, otherwise hide product image container
+                const imgTag = (p.images && p.images.length > 0 && p.images[0]) 
+                    ? `<img src="${p.images[0]}" alt="${p.title}" class="w-full h-48 object-cover cursor-pointer hover:scale-105 transition" onclick="window.open('${p.images[0]}', '_blank')">`
+                    : `<div class="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">No Image</div>`;
+
+                const stockText = p.description && p.description.includes('Stock') ? '' : `<p class="text-xs text-green-600 font-semibold mb-2">🟢 Stock: Available</p>`;
                 const whatsappMsg = encodeURIComponent(`Salam! Mujhe yeh product order karna hai:\nProduct: ${p.title}\nPrice: Rs. ${p.price}\nDetails: ${p.description}`);
                 
+                let deleteBtn = isAdminLoggedIn ? `<button onclick="deleteProduct(${p.id})" class="mt-2 w-full bg-red-500 text-white py-1 rounded text-xs font-bold hover:bg-red-600">🗑️ Delete Product</button>` : '';
+
                 grid.innerHTML += `
-                    <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col justify-between">
+                    <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col justify-between p-2">
                         <div>
-                            <img src="${imgUrl}" alt="${p.title}" class="w-full h-48 object-cover cursor-pointer hover:scale-105 transition" onclick="window.open('${imgUrl}', '_blank')">
-                            <div class="p-3">
+                            ${imgTag}
+                            <div class="p-2">
                                 <h3 class="font-bold text-gray-800 text-sm mb-1">${p.title}</h3>
-                                <p class="text-xs text-gray-500 mb-2">${p.description || ''}</p>
-                                <p class="text-pink-600 font-extrabold text-sm">Rs. ${p.price}</p>
+                                <p class="text-xs text-gray-500 mb-1">${p.description || ''}</p>
+                                <p class="text-xs text-green-600 font-semibold mb-2">📦 ${p.stock || 'In Stock'}</p>
+                                <p class="text-pink-600 font-extrabold text-sm mb-2">Rs. ${p.price}</p>
                             </div>
                         </div>
-                        <div class="p-3 pt-0">
+                        <div>
                             <a href="https://wa.me/923339998286?text=${whatsappMsg}" target="_blank" class="block text-center bg-green-500 text-white py-2 rounded text-xs font-bold shadow hover:bg-green-600">Order via WhatsApp</a>
+                            ${deleteBtn}
                         </div>
                     </div>
                 `;
@@ -191,33 +206,30 @@
             const title = document.getElementById('pTitle').value;
             const category = document.getElementById('pCategory').value;
             const price = document.getElementById('pPrice').value;
+            const stock = document.getElementById('pStock').value;
             const description = document.getElementById('pDesc').value;
             const fileInput = document.getElementById('pImage');
 
             if (!title || !price || fileInput.files.length === 0) {
-                alert('Please fill all required fields and select images!');
+                alert('Please fill title, price and select an image from gallery!');
                 return;
             }
 
-            alert('Uploading images, please wait...');
-            let imageUrls = [];
+            alert('Uploading image from gallery, please wait...');
+            const file = fileInput.files[0];
+            const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '');
 
-            for (let file of fileInput.files) {
-                const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '');
-                const { data, error } = await supabaseClient.storage.from('product-images').upload(fileName, file);
-                
-                if (error) {
-                    alert('Image Upload Error: ' + error.message);
-                    return;
-                }
-
-                // Directly construct the guaranteed public URL
-                const publicUrl = `https://bfstugwiughvzsecngcg.supabase.co/storage/v1/object/public/product-images/${fileName}`;
-                imageUrls.push(publicUrl);
+            const { data, error } = await supabaseClient.storage.from('product-images').upload(fileName, file);
+            
+            if (error) {
+                alert('Image Upload Error: ' + error.message);
+                return;
             }
 
+            const publicUrl = `https://bfstugwiughvzsecngcg.supabase.co/storage/v1/object/public/product-images/${fileName}`;
+
             const { error: dbError } = await supabaseClient.from('products').insert([
-                { title, category, price: parseFloat(price), description, images: imageUrls }
+                { title, category, price: parseFloat(price), stock, description, images: [publicUrl] }
             ]);
 
             if (dbError) {
@@ -230,6 +242,18 @@
                 document.getElementById('pImage').value = '';
                 toggleAdminModal();
                 loadProducts();
+            }
+        }
+
+        async function deleteProduct(id) {
+            if (confirm('Kya aap waqai is product ko delete karna chahte hain?')) {
+                const { error } = await supabaseClient.from('products').delete().eq('id', id);
+                if (error) {
+                    alert('Error deleting product: ' + error.message);
+                } else {
+                    alert('Product deleted successfully!');
+                    loadProducts();
+                }
             }
         }
 
