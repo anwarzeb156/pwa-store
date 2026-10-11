@@ -87,14 +87,12 @@
         let currentCategory = 'Abaya';
         let deferredPrompt = null;
 
-        // Capture PWA Install Prompt Event
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             document.getElementById('installBanner').classList.remove('hidden');
         });
 
-        // Direct Install Click Function
         document.getElementById('installBtn').addEventListener('click', async () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
@@ -165,7 +163,8 @@
 
             grid.innerHTML = '';
             data.forEach(p => {
-                const imgUrl = p.images && p.images.length > 0 ? p.images[0] : 'https://via.placeholder.com/300';
+                // Fixed robust public image URL handling
+                const imgUrl = (p.images && p.images.length > 0 && p.images[0]) ? p.images[0] : 'https://bfstugwiughvzsecngcg.supabase.co/storage/v1/object/public/product-images/logo.png';
                 const whatsappMsg = encodeURIComponent(`Salam! Mujhe yeh product order karna hai:\nProduct: ${p.title}\nPrice: Rs. ${p.price}\nDetails: ${p.description}`);
                 
                 grid.innerHTML += `
@@ -202,12 +201,17 @@
             let imageUrls = [];
 
             for (let file of fileInput.files) {
-                const fileName = Date.now() + '_' + file.name;
+                const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '');
                 const { data, error } = await supabaseClient.storage.from('product-images').upload(fileName, file);
-                if (!error) {
-                    const { data: publicURL } = supabaseClient.storage.from('product-images').getPublicUrl(fileName);
-                    imageUrls.push(publicURL.publicUrl);
+                
+                if (error) {
+                    alert('Image Upload Error: ' + error.message);
+                    return;
                 }
+
+                // Directly construct the guaranteed public URL
+                const publicUrl = `https://bfstugwiughvzsecngcg.supabase.co/storage/v1/object/public/product-images/${fileName}`;
+                imageUrls.push(publicUrl);
             }
 
             const { error: dbError } = await supabaseClient.from('products').insert([
