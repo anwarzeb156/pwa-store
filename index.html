@@ -8,10 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- PWA Manifest with Custom App Name and Logo -->
+    <!-- PWA Manifest -->
     <link rel="manifest" href="data:application/json;charset=utf-8,{
       %22name%22: %22Zari's Fashion World%22,
-      %22short_name%22: %22Zari's Store%22,
+      %22short_name%22: %22Zari's Fashion World%22,
       %22start_url%22: %22/%22,
       %22display%22: %22standalone%22,
       %22background_color%22: %22%23ffffff%22,
@@ -32,11 +32,10 @@
         <button onclick="toggleAdminModal()" class="bg-white text-pink-600 px-3 py-1 rounded text-xs font-bold shadow">Admin</button>
     </header>
 
-    <!-- Prominent One-Click PWA Install Banner -->
-    <div id="installBanner" class="bg-gradient-to-r from-pink-600 to-rose-500 text-white p-4 text-center shadow-lg sticky top-14 z-40 border-b-2 border-white">
+    <!-- Direct One-Click Install Banner -->
+    <div id="installBanner" class="hidden bg-gradient-to-r from-pink-600 to-rose-500 text-white p-4 text-center shadow-lg sticky top-14 z-40 border-b-2 border-white">
         <div class="max-w-md mx-auto flex flex-col items-center gap-2">
-            <p class="text-sm font-bold flex items-center gap-1">📲 Mobile Screen Par App Lagayein!</p>
-            <p class="text-xs text-pink-100">Ek click karein taaki app aapki screen par save ho jaye.</p>
+            <p class="text-sm font-bold">📲 Mobile Screen Par App Lagayein!</p>
             <button id="installBtn" class="bg-white text-pink-700 px-6 py-2 rounded-full text-sm font-extrabold shadow-md hover:bg-gray-100 active:scale-95 transition">✨ App Install Karein</button>
         </div>
     </div>
@@ -86,14 +85,16 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentCategory = 'Abaya';
-        let deferredPrompt;
+        let deferredPrompt = null;
 
+        // Capture PWA Install Prompt Event
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             document.getElementById('installBanner').classList.remove('hidden');
         });
 
+        // Direct Install Click Function
         document.getElementById('installBtn').addEventListener('click', async () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
@@ -102,8 +103,6 @@
                     document.getElementById('installBanner').classList.add('hidden');
                 }
                 deferredPrompt = null;
-            } else {
-                alert("Mobile Par Install Karne Ke Liye:\n\n1. Chrome/Safari Menu (3 Dots / Share button) par click karein.\n2. 'Add to Home Screen' select karein!");
             }
         });
 
