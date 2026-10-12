@@ -41,10 +41,11 @@
     </div>
 
     <!-- Category Tabs -->
-    <div class="flex justify-center gap-3 my-4 px-4 overflow-x-auto">
-        <button onclick="filterCategory('Abaya')" id="btnAbaya" class="px-5 py-2 rounded-full font-bold bg-pink-600 text-white shadow text-sm">Abayas</button>
-        <button onclick="filterCategory('Perfume')" id="btnPerfume" class="px-5 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm">Perfumes</button>
-        <button onclick="filterCategory('Caligraphy')" id="btnCaligraphy" class="px-5 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm">Caligraphy</button>
+    <div class="flex justify-center gap-2 my-4 px-4 overflow-x-auto">
+        <button onclick="filterCategory('Abaya')" id="btnAbaya" class="px-4 py-2 rounded-full font-bold bg-pink-600 text-white shadow text-sm">Abayas</button>
+        <button onclick="filterCategory('Hijab')" id="btnHijab" class="px-4 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm">Hijabs</button>
+        <button onclick="filterCategory('Perfume')" id="btnPerfume" class="px-4 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm">Perfumes</button>
+        <button onclick="filterCategory('Caligraphy')" id="btnCaligraphy" class="px-4 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm">Caligraphy</button>
     </div>
 
     <!-- Product Grid -->
@@ -66,14 +67,17 @@
                 <input type="text" id="pTitle" placeholder="Product Name" class="w-full border p-2 mb-2 rounded">
                 <select id="pCategory" class="w-full border p-2 mb-2 rounded">
                     <option value="Abaya">Abaya</option>
+                    <option value="Hijab">Hijab</option>
                     <option value="Perfume">Perfume</option>
                     <option value="Caligraphy">Caligraphy</option>
                 </select>
                 <input type="number" id="pPrice" placeholder="Price (Rs)" class="w-full border p-2 mb-2 rounded">
                 <input type="text" id="pStock" placeholder="Stock Status (e.g. In Stock / Available)" value="In Stock" class="w-full border p-2 mb-2 rounded">
                 <textarea id="pDesc" placeholder="Variations (e.g. Size: Free, Color: Black)" class="w-full border p-2 mb-2 rounded"></textarea>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Select Image from Gallery:</label>
-                <input type="file" id="pImage" accept="image/*" class="w-full border p-2 mb-4 rounded">
+                
+                <label class="block text-sm font-medium text-gray-700 mb-1">Select Images (Max 5 images):</label>
+                <input type="file" id="pImage" accept="image/*" multiple class="w-full border p-2 mb-4 rounded">
+                
                 <button onclick="uploadProduct()" class="w-full bg-green-600 text-white py-2 rounded font-bold mb-2">Publish Product</button>
                 <button onclick="logoutAdmin()" class="w-full bg-gray-400 text-white py-2 rounded font-bold">Logout</button>
             </div>
@@ -139,12 +143,12 @@
 
         function filterCategory(cat) {
             currentCategory = cat;
-            ['Abaya', 'Perfume', 'Caligraphy'].forEach(c => {
+            ['Abaya', 'Hijab', 'Perfume', 'Caligraphy'].forEach(c => {
                 const btn = document.getElementById('btn' + c);
                 if(c === cat) {
-                    btn.className = "px-5 py-2 rounded-full font-bold bg-pink-600 text-white shadow text-sm";
+                    btn.className = "px-4 py-2 rounded-full font-bold bg-pink-600 text-white shadow text-sm";
                 } else {
-                    btn.className = "px-5 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm";
+                    btn.className = "px-4 py-2 rounded-full font-bold bg-gray-200 text-gray-700 text-sm";
                 }
             });
             loadProducts();
@@ -172,12 +176,21 @@
 
             grid.innerHTML = '';
             data.forEach(p => {
-                // Strict check: if image array is valid, show user uploaded image, otherwise hide product image container
-                const imgTag = (p.images && p.images.length > 0 && p.images[0]) 
-                    ? `<img src="${p.images[0]}" alt="${p.title}" class="w-full h-48 object-cover cursor-pointer hover:scale-105 transition" onclick="window.open('${p.images[0]}', '_blank')">`
-                    : `<div class="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">No Image</div>`;
+                let imagesHtml = '';
+                if (p.images && p.images.length > 0 && p.images[0]) {
+                    imagesHtml = `<img id="mainImg_${p.id}" src="${p.images[0]}" alt="${p.title}" class="w-full h-48 object-cover cursor-pointer hover:scale-105 transition" onclick="window.open('${p.images[0]}', '_blank')">`;
+                    
+                    if (p.images.length > 1) {
+                        imagesHtml += `<div class="flex gap-1 p-1 overflow-x-auto bg-gray-100">`;
+                        p.images.forEach((imgUrl) => {
+                            imagesHtml += `<img src="${imgUrl}" class="w-9 h-9 object-cover rounded cursor-pointer border hover:border-pink-600" onclick="document.getElementById('mainImg_${p.id}').src='${imgUrl}'; document.getElementById('mainImg_${p.id}').onclick = () => window.open('${imgUrl}', '_blank');">`;
+                        });
+                        imagesHtml += `</div>`;
+                    }
+                } else {
+                    imagesHtml = `<div class="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">No Image</div>`;
+                }
 
-                const stockText = p.description && p.description.includes('Stock') ? '' : `<p class="text-xs text-green-600 font-semibold mb-2">🟢 Stock: Available</p>`;
                 const whatsappMsg = encodeURIComponent(`Salam! Mujhe yeh product order karna hai:\nProduct: ${p.title}\nPrice: Rs. ${p.price}\nDetails: ${p.description}`);
                 
                 let deleteBtn = isAdminLoggedIn ? `<button onclick="deleteProduct(${p.id})" class="mt-2 w-full bg-red-500 text-white py-1 rounded text-xs font-bold hover:bg-red-600">🗑️ Delete Product</button>` : '';
@@ -185,7 +198,7 @@
                 grid.innerHTML += `
                     <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col justify-between p-2">
                         <div>
-                            ${imgTag}
+                            ${imagesHtml}
                             <div class="p-2">
                                 <h3 class="font-bold text-gray-800 text-sm mb-1">${p.title}</h3>
                                 <p class="text-xs text-gray-500 mb-1">${p.description || ''}</p>
@@ -211,31 +224,41 @@
             const fileInput = document.getElementById('pImage');
 
             if (!title || !price || fileInput.files.length === 0) {
-                alert('Please fill title, price and select an image from gallery!');
+                alert('Please fill title, price and select at least one image!');
                 return;
             }
 
-            alert('Uploading image from gallery, please wait...');
-            const file = fileInput.files[0];
-            const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '');
-
-            const { data, error } = await supabaseClient.storage.from('product-images').upload(fileName, file);
-            
-            if (error) {
-                alert('Image Upload Error: ' + error.message);
+            if (fileInput.files.length > 5) {
+                alert('Aap maximum 5 images hi select kar sakte hain!');
                 return;
             }
 
-            const publicUrl = `https://bfstugwiughvzsecngcg.supabase.co/storage/v1/object/public/product-images/${fileName}`;
+            alert('Uploading images, please wait...');
+            let uploadedUrls = [];
+
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const file = fileInput.files[i];
+                const fileName = Date.now() + '_' + i + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '');
+
+                const { data, error } = await supabaseClient.storage.from('product-images').upload(fileName, file);
+                
+                if (error) {
+                    alert(`Image ${i+1} Upload Error: ` + error.message);
+                    return;
+                }
+
+                const publicUrl = `https://bfstugwiughvzsecngcg.supabase.co/storage/v1/object/public/product-images/${fileName}`;
+                uploadedUrls.push(publicUrl);
+            }
 
             const { error: dbError } = await supabaseClient.from('products').insert([
-                { title, category, price: parseFloat(price), stock, description, images: [publicUrl] }
+                { title, category, price: parseFloat(price), stock, description, images: uploadedUrls }
             ]);
 
             if (dbError) {
                 alert('Error saving product: ' + dbError.message);
             } else {
-                alert('Product uploaded successfully!');
+                alert('Products and images uploaded successfully!');
                 document.getElementById('pTitle').value = '';
                 document.getElementById('pPrice').value = '';
                 document.getElementById('pDesc').value = '';
